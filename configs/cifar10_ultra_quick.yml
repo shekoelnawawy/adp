@@ -1,0 +1,41 @@
+structure:
+  att_log: "cifar10" # Attacker model path
+  ebm_log: "cifar10" # EBM path
+  clf_log: "cifar10_carmon" # Classifier model path (using robustbench model)
+  classifier: "Wide_ResNet" # Classifier structure (not used for robustbench models)
+  dataset: "CIFAR10" # Dataset
+  bsize: 1 # Single image for fastest test
+  start_epoch: 0
+  end_epoch: 0 # Only test on first batch (single image)
+
+attack:
+  attack_method: "clf_pgd" # Simplest attack method
+  ptb: 8. # perturbation, pixel scale
+  alpha: 2. # One-step attack pixel scale
+  ball_dim: -1 # -1 if l_inf
+  n_eot: 1 # Number of EOT
+  attack_lambda: 0.05 # adaptive attack step size strategy
+  attack_steps: 3 # Minimal attack steps
+  iter: 3 # Minimal iterations
+
+certified:
+  ptb: 0.25 # Gaussian random perturbation to input
+  sample: 10 # Minimal samples (reduced from 100)
+
+purification:
+  purify_method: "adp" # purification method
+  rand_smoothing: true # Randomized smoothing right after input
+  rand_smoothing_level: 0.25 # stdev of Gaussian noise for randomized smoothing
+  rand_smoothing_ensemble: 1 # Minimal ensemble (just 1)
+  purification_lambda: 0.05 # level of purification per step
+  stopping_alpha: 0.001 # Stop purification if given alpha is lower than this.
+  max_iter: 2 # Ultra minimal iterations
+  purify_natural: false # Skip natural image purification
+
+classification:
+  classify_all_steps: false # Only last logit
+
+device:
+  ebm_device: "cpu"  # Using CPU
+  clf_device: "cpu"  # Using CPU
+

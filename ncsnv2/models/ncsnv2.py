@@ -97,7 +97,12 @@ class NCSNv2(nn.Module):
         # For training: get all used_sigmas
         #used_sigmas = self.sigmas[y].view(x.shape[0], *([1] * len(x.shape[1:])))
         # For running in adp: unify all sigmas to one
-        used_sigmas = torch.ones(x.shape[0]).to('cuda:0').view(x.shape[0], *([1] * len(x.shape[1:])))
+        # CHANGED: Replaced hardcoded 'cuda:0' with x.device for dynamic device handling.
+        # The original code used .to('cuda:0') which would fail on CPU-only systems or when
+        # using a different CUDA device. This change makes the code work on any device
+        # (CPU, CUDA:0, CUDA:1, etc.) by using the device of the input tensor x.
+        # Use device from x (which is already on the correct device)
+        used_sigmas = torch.ones(x.shape[0], device=x.device).view(x.shape[0], *([1] * len(x.shape[1:])))
 
         output = output / used_sigmas
 

@@ -3,11 +3,23 @@ from torchvision.datasets import MNIST, CIFAR10, FashionMNIST, CIFAR100
 import torchvision.transforms as transforms
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
-from runners import TinyImageNet
+# CHANGED: Made TinyImageNet import conditional to avoid circular import errors.
+# The original code would fail if TinyImageNet wasn't available or if there was a circular
+# import issue. This change allows the code to run even if TinyImageNet is not available,
+# and gracefully handles the case when it's not needed.
+# TinyImageNet import - handle circular import
+try:
+    from runners.TinyImageNet import TinyImageNet
+except ImportError:
+    TinyImageNet = None
 
 import os
 import sys
-path_root = '/home/itl/jmyoon/AA_EBM/adp'
+# CHANGED: Replaced hardcoded path_root with dynamic path resolution.
+# Previously used a hardcoded absolute path which would break when the repository
+# is moved or used on different machines. This change makes the code portable by
+# dynamically determining the project root directory relative to this file's location.
+path_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(path_root)
 
 def importData(dataset, train, shuffle, bsize):
@@ -47,6 +59,8 @@ def importData(dataset, train, shuffle, bsize):
         path = os.path.join(path_root, "datasets", "CIFAR100")
         dataset = CIFAR100(path, train=train, download=True, transform=transform)
     elif dataset=="TinyImageNet":
+        if TinyImageNet is None:
+            raise ImportError("TinyImageNet dataset loader not available. Please ensure runners.TinyImageNet module exists.")
         transform = transforms.Compose([
             transforms.ToTensor()
         ])

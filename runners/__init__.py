@@ -1,4 +1,14 @@
 from runners.empirical import *
-from runners.certified import *
-from runners.deploy import *
-from runners.TinyImageNet import *
+# Optional imports - handle missing modules gracefully
+try:
+    from runners.certified import *
+except ImportError:
+    pass
+try:
+    from runners.deploy import *
+except ImportError:
+    pass
+try:
+    from runners.TinyImageNet import *
+except ImportError:
+    pass

@@ -7,8 +7,46 @@ import torch.nn.functional as F
 import yaml
 import functools
 import pandas as pd
-from ncsn.models.refinenet_dilated_baseline import RefineNetDilated
-from robustbench.utils import load_model
+import argparse
+# CHANGED: Made RefineNetDilated import optional with try-except to prevent ImportError
+# if ncsn module is not fully installed. This allows the code to run even if some optional
+# dependencies are missing.
+# Optional imports - only needed for certain models
+try:
+    from ncsn.models.refinenet_dilated_baseline import RefineNetDilated
+except ImportError:
+    RefineNetDilated = None
+# CHANGED: Modified robustbench load_model import to handle autoattack dependency issues.
+# The original import would fail if autoattack wasn't installed. This change:
+# 1. Tries to import directly from robustbench.utils
+# 2. Falls back to manual module loading if that fails
+# 3. Allows the code to work even if autoattack is missing (robustbench tries to import it)
+# Import robustbench load_model - handle autoattack dependency issue
+try:
+    # Try to import just the utils module which has load_model
+    import robustbench.utils as rb_utils
+    load_model = rb_utils.load_model
+except (ImportError, AttributeError) as e:
+    # If that fails, try importing the whole package
+    try:
+        from robustbench.utils import load_model
+    except ImportError:
+        # If autoattack is missing, we can still try to use load_model directly
+        try:
+            import sys
+            import importlib.util
+            spec = importlib.util.find_spec("robustbench.utils")
+            if spec is not None:
+                # Manually import just the load_model function
+                rb_utils = importlib.util.module_from_spec(spec)
+                # Skip the __init__ that imports autoattack
+                sys.modules['robustbench.utils'] = rb_utils
+                spec.loader.exec_module(rb_utils)
+                load_model = rb_utils.load_model
+            else:
+                load_model = None
+        except:
+            load_model = None
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
@@ -33,7 +71,12 @@ class Empirical():
             self.nClass = 100
         elif self.config.structure.dataset in ["TinyImageNet"]:
             self.nClass = 200
-        self.config.structure.end_epoch = 99
+        # CHANGED: Fixed end_epoch to respect config file value instead of always overriding to 99.
+        # Previously, the code would always set end_epoch=99, ignoring the config file setting.
+        # This change allows config files to control how many epochs/batches to process,
+        # enabling faster test runs (e.g., end_epoch=0 for single batch testing).
+        if not hasattr(self.config.structure, 'end_epoch') or self.config.structure.end_epoch is None:
+            self.config.structure.end_epoch = 99
         self.config.attack.if_attack = True
         self.config.purification.rand_type = "gaussian"
         self.config.attack.rand_smoothing_level = self.config.purification.rand_smoothing_level
@@ -75,6 +118,8 @@ class Empirical():
             optimizer = optim.Adam(network_clf.parameters(), lr=0.001, weight_decay=0., betas=(0.9, 0.999), amsgrad=False)
             network_clf.load_state_dict(states_att[0])
         elif self.config.structure.clf_log in ["cifar10_carmon", "cifar10_wu", "cifar10_zhang"]:
+            if load_model is None:
+                raise ImportError("robustbench is required for loading pre-trained robust models. Install with: pip install robustbench")
             model_dir = os.path.join("clf_models/run/logs", self.config.structure.clf_log, "models")
             if self.config.structure.clf_log=="cifar10_carmon":
                 network_clf = load_model(model_name="Carmon2019Unlabeled", model_dir=model_dir)
@@ -97,7 +142,21 @@ class Empirical():
         # Import purifier networks
         
         with open(os.path.join('ncsnv2/run/logs', self.config.structure.ebm_log, 'config.yml'), 'r') as f:
-            config_ebm = yaml.load(f, Loader=yaml.Loader)
+            config_ebm_dict = yaml.load(f, Loader=yaml.Loader)
+            # CHANGED: Added dict2namespace conversion to ensure config_ebm is a namespace object,
+            # not a dictionary. This fixes AttributeError when accessing config_ebm.device or other
+            # attributes. The YAML loader returns a dict, but the code expects namespace objects
+            # with attribute access (e.g., config_ebm.device instead of config_ebm['device']).
+            # Convert dict to namespace (recursively like in main.py)
+            def dict2namespace(d):
+                namespace = argparse.Namespace()
+                for key, value in d.items():
+                    if isinstance(value, dict):
+                        setattr(namespace, key, dict2namespace(value))
+                    else:
+                        setattr(namespace, key, value)
+                return namespace
+            config_ebm = dict2namespace(config_ebm_dict)
             config_ebm.device = self.config.device.ebm_device
         network_ebm = get_model(config_ebm)
         network_ebm = torch.nn.DataParallel(network_ebm)
@@ -297,7 +356,11 @@ class Empirical():
                 new_row["nat_purens_acc_list_each_s"] = nat_acc_purens_each["softmax"]
                 new_row["nat_purens_acc_list_each_o"] = nat_acc_purens_each["onehot"]
 
-            df = df.append(new_row, ignore_index=True)
+            # CHANGED: Replaced df.append() with pd.concat() for Pandas 2.0+ compatibility.
+            # The append() method was deprecated in Pandas 1.4.0 and removed in Pandas 2.0.0.
+            # This change ensures the code works with modern Pandas versions.
+            # Use pd.concat instead of append (deprecated in pandas 2.0+)
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             df.to_pickle(os.path.join(self.args.log, "df.pkl"))
 
             ### PLOT

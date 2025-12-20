@@ -1,3 +1,12 @@
-pytorch==1.8.0
-torchvisiion==0.9.0
+# CHANGED: Fixed typo 'torchvisiion' -> 'torchvision' and added missing dependencies:
+# - robustbench: Required for loading pre-trained robust models (install separately: pip install robustbench)
+# - autoattack: Optional dependency for robustbench (may be installed automatically with robustbench)
+torch>=1.8.0
+torchvision>=0.9.0
 foolbox==3.3.1
+pyyaml
+pandas
+matplotlib
+scikit-learn
+scipy
+tqdm

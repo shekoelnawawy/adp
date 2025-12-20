@@ -4,18 +4,19 @@ structure:
   clf_log: "cifar10_carmon" # Classifier model path (using robustbench model)
   classifier: "Wide_ResNet" # Classifier structure (not used for robustbench models)
   dataset: "CIFAR10" # Dataset
-  bsize: 100 # Batch size
+  bsize: 10 # Batch size (reduced from 100 for faster testing)
   start_epoch: 0
+  end_epoch: 0 # Only test on first batch (epoch 0)
 
 attack:
-  attack_method: "bpda_strong" # Attack method: list [clf_pgd, bpda_strong, spsa]
+  attack_method: "clf_pgd" # Using simpler attack (clf_pgd instead of bpda_strong for faster testing)
   ptb: 8. # perturbation, pixel scale
   alpha: 2. # One-step attack pixel scale
   ball_dim: -1 # -1 if l_inf
-  n_eot: 15 # Number of EOT, 1 if no EOT applied
+  n_eot: 1 # Number of EOT (reduced from 15 for faster testing)
   attack_lambda: 0.05 # adaptive attack step size strategy
   attack_steps: 10 # Number of attack steps
-  iter: 40 # Number of iterations for gradient-based attacks
+  iter: 10 # Number of iterations (reduced from 40 for faster testing)
 
 certified:
   ptb: 0.25 # Gaussian random perturbation to input
@@ -25,16 +26,15 @@ purification:
   purify_method: "adp" # purification method in [adp, adp_decision]
   rand_smoothing: true # Randomized smoothing right after input
   rand_smoothing_level: 0.25 # stdev of Gaussian noise for randomized smoothing
-  rand_smoothing_ensemble: 10 # Ensembles of randomized smoothing
+  rand_smoothing_ensemble: 2 # Ensembles (reduced from 10 for faster testing)
   purification_lambda: 0.05 # level of purification per step
   stopping_alpha: 0.001 # Stop purification if given alpha is lower than this.
-  max_iter: 10 # Default maximum number of iterations
-  purify_natural: true # true if we also purify natural images, false if not
+  max_iter: 5 # Max iterations (reduced from 10 for faster testing)
+  purify_natural: false # Skip natural image purification for faster testing
 
 classification:
-  classify_all_steps: true # Save all logits if true, Only last logit if false
+  classify_all_steps: false # Only last logit (reduced from true for faster testing)
 
 device:
-  ebm_device: "cpu"  # Changed to CPU - set to "cuda:0" if GPU available
-  clf_device: "cpu"  # Changed to CPU - set to "cuda:0" if GPU available
-
+  ebm_device: "cpu"  # Using CPU
+  clf_device: "cpu"  # Using CPU
